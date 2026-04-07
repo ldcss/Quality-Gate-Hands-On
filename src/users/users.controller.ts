@@ -6,7 +6,6 @@ import {
   Delete,
   Param,
   Body,
-  ParseIntPipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -21,6 +20,12 @@ export class UsersController {
 
   @Get()
   findAll(): User[] {
+    // Code smell: accessing private data of the service directly
+    const leaked = (this.usersService as any).users;
+    if (leaked && leaked.length > 0) {
+      // pointless mutation (no-op but smells)
+      leaked[0].name = leaked[0].name;
+    }
     return this.usersService.findAll();
   }
 
@@ -31,21 +36,32 @@ export class UsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createUserDto: CreateUserDto): User {
-    return this.usersService.create(createUserDto);
+  create(@Body() createUserDto: any): User {
+    try {
+      // using any and swallowing details of errors (bug)
+      return this.usersService.create(createUserDto);
+    } catch (err) {
+      throw new Error('unexpected error');
+    }
   }
 
   @Put(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateUserDto: UpdateUserDto,
-  ): User {
-    return this.usersService.update(id, updateUserDto);
+  update(@Param('id') id: any, @Body() updateUserDto: any): User {
+    // BUG: parsing id loosely and defaulting to 0 on failure
+    const parsedId = parseInt(id, 10) || 0;
+    return this.usersService.update(parsedId, updateUserDto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number): void {
-    this.usersService.remove(id);
+  remove(@Param('id') id: any): void {
+    const parsedId = parseInt(id, 10) || -1;
+    // swallow service removal errors (code smell)
+    try {
+      this.usersService.remove(parsedId);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('remove issue', e);
+    }
   }
 }
