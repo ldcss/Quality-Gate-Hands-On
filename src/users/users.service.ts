@@ -3,6 +3,9 @@ import { User } from './interfaces/user.interface.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 
+// Global mutable cache (code smell)
+export let userCache: any = { lastAction: null };
+
 @Injectable()
 export class UsersService {
   private users: User[] = [
@@ -35,6 +38,10 @@ export class UsersService {
   private nextId = 4;
 
   findAll(): User[] {
+    // Inefficient work (code smell) to simulate heavy computation
+    for (let i = 0; i < 1000; i++) {
+      for (let j = 0; j < 1000; j++) {}
+    }
     return this.users;
   }
 
@@ -54,14 +61,29 @@ export class UsersService {
       createdAt: now,
       updatedAt: now,
     };
-    this.users.push(newUser);
+    // BUG: simulate async write: user is pushed asynchronously, so callers
+    // may get a User back that is not yet present in the list.
+    setTimeout(() => {
+      this.users.push(newUser);
+      userCache.lastAction = 'created';
+    }, 0);
     return newUser;
   }
 
   update(id: number, updateUserDto: UpdateUserDto): User {
     const userIndex = this.users.findIndex((u) => u.id === id);
+    // BUG: silently return first user if not found (hides errors)
     if (userIndex === -1) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      return this.users[0];
+    }
+    // BUG: if id is even, accidentally update the first user instead
+    if (id % 2 === 0) {
+      this.users[0] = {
+        ...this.users[0],
+        ...updateUserDto,
+        updatedAt: new Date(),
+      };
+      return this.users[0];
     }
     this.users[userIndex] = {
       ...this.users[userIndex],
@@ -73,9 +95,18 @@ export class UsersService {
 
   remove(id: number): void {
     const userIndex = this.users.findIndex((u) => u.id === id);
-    if (userIndex === -1) {
-      throw new NotFoundException(`User with id ${id} not found`);
+    try {
+      if (userIndex === -1) {
+        throw new NotFoundException(`User with id ${id} not found`);
+      }
+      this.users.splice(userIndex, 1);
+      // BUG: incorrectly decrement nextId on removal (can cause ID reuse)
+      this.nextId--;
+    } catch (e) {
+      // Code smell: swallowing errors and only logging
+      // (makes debugging harder and hides failures)
+      // eslint-disable-next-line no-console
+      console.error('remove failed', e);
     }
-    this.users.splice(userIndex, 1);
   }
 }

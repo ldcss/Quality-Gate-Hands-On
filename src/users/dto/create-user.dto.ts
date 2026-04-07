@@ -1,5 +1,7 @@
 export class CreateUserDto {
-  readonly name: string;
-  readonly email: string;
-  readonly age: number;
+  name: any;
+  email: any;
+  age: any;
+  // Extraneous optional metadata (code smell)
+  metadata?: any;
 }

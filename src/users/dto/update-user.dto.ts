@@ -1,5 +1,7 @@
 export class UpdateUserDto {
-  readonly name?: string;
-  readonly email?: string;
-  readonly age?: number;
+  name?: any;
+  email?: any;
+  age?: any;
+  // Confusing flag that should not exist here
+  shouldExist?: boolean;
 }
