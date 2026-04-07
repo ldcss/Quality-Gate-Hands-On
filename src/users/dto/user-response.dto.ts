@@ -1,24 +1,28 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty } from '@nestjs/swagger';
 
-export class UpdateUserDto {
+export class UserResponseDto {
+  @ApiProperty({
+    description: 'ID do usuário',
+    example: 1,
+  })
+  id: number;
+
   @ApiProperty({
     description: 'Nome do usuário',
     example: 'Alice Johnson',
-    required: false,
-    minLength: 3,
-    maxLength: 100,
   })
-  readonly name?: string;
+  name: string;
+
   @ApiProperty({
     description: 'Email do usuário',
     example: 'alice.johnson@example.com',
-    required: false,
   })
-  readonly email?: string;
+  email: string;
+
   @ApiProperty({
     description: 'Idade do usuário',
     example: 30,
     required: false,
   })
-  readonly age?: number;
+  age?: number;
 }

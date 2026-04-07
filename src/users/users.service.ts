@@ -3,6 +3,15 @@ import { User } from './interfaces/user.interface.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 
+interface FindAllUsersOptions {
+  name?: string;
+  email?: string;
+  minAge?: number;
+  maxAge?: number;
+  page?: number;
+  limit?: number;
+}
+
 @Injectable()
 export class UsersService {
   private users: User[] = [
@@ -34,8 +43,27 @@ export class UsersService {
 
   private nextId = 4;
 
-  findAll(): User[] {
-    return this.users;
+  findAll(options?: FindAllUsersOptions): User[] {
+    const filteredUsers = this.users.filter((user) => {
+      const matchesName = options?.name
+        ? user.name.toLowerCase().includes(options.name.toLowerCase())
+        : true;
+      const matchesEmail = options?.email
+        ? user.email.toLowerCase().includes(options.email.toLowerCase())
+        : true;
+      const matchesMinAge =
+        options?.minAge !== undefined ? user.age >= options.minAge : true;
+      const matchesMaxAge =
+        options?.maxAge !== undefined ? user.age <= options.maxAge : true;
+
+      return matchesName && matchesEmail && matchesMinAge && matchesMaxAge;
+    });
+
+    const page = options?.page ?? 1;
+    const limit = options?.limit ?? filteredUsers.length;
+    const start = (page - 1) * limit;
+
+    return filteredUsers.slice(start, start + limit);
   }
 
   findOne(id: number): User {
